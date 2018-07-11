@@ -94,10 +94,10 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_statsd_runtime)
 	switch_cache_db_handle_t *dbh;
 	char sql[1024] = "";
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Starting Poll for metrics\n");
+
 	while(globals.shutdown == 0) {
 		switch_mutex_lock(globals.mutex);
-
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Polling for metrics\n");
 
 		statsd_gauge(globals.link, "sessions_since_startup", switch_core_session_id() - 1);
 		statsd_gauge(globals.link, "sessions_count", switch_core_session_count());

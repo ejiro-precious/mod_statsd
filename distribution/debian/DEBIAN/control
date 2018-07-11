@@ -1,0 +1,8 @@
+Package: freeswitch-mod-statsd
+Version: 1._VERSION_
+Architecture: all
+Section: base
+Priority: standard
+Depends: freeswitch
+Maintainer: Kinshuk Bairagi <me@kinshuk.in>
+Description: Publish FreeSwitch Stats to StatsD
