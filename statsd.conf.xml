@@ -2,6 +2,6 @@
 	<settings>
 		<param name="host" value="127.0.0.1"/>
 		<param name="port" value="8125"/>
-		<param name="namespace" value="something"/>
+		<param name="namespace" value="freeswitch"/>
 	</settings>
  </configuration>
