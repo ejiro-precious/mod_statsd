@@ -38,53 +38,44 @@ static struct {
 	int port;
 	statsd_link* link;
 	char *host;
-	char *namespace;
+	char *_namespace;
 	int shutdown;
 } globals;
+
+#define SLEEP_INTERVAL 5*1000*1000 //1s
 
 SWITCH_MODULE_LOAD_FUNCTION(mod_statsd_load);
 SWITCH_MODULE_RUNTIME_FUNCTION(mod_statsd_runtime);
 SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_statsd_shutdown);
 SWITCH_MODULE_DEFINITION(mod_statsd, mod_statsd_load, mod_statsd_shutdown, mod_statsd_runtime);
 
-static switch_status_t load_config(switch_memory_pool_t *pool)
+
+static switch_xml_config_item_t instructions[] = {
+    SWITCH_CONFIG_ITEM("host", SWITCH_CONFIG_STRING, CONFIG_REQUIRED, &globals.host,
+                        "127.0.0.1", NULL, NULL, "StatsD hostname"),
+    SWITCH_CONFIG_ITEM("port", SWITCH_CONFIG_INT, CONFIG_REQUIRED, &globals.port,
+                        (void *) 8125, NULL, NULL, NULL),
+    SWITCH_CONFIG_ITEM("namespace", SWITCH_CONFIG_STRING, CONFIG_RELOADABLE, &globals._namespace,
+                        NULL, NULL, NULL, "StatsD namespace"),
+    SWITCH_CONFIG_ITEM_END()
+};
+
+
+static switch_status_t load_config(switch_memory_pool_t *pool, switch_bool_t reload)
 {
-	char *cf = "statsd.conf";
-	switch_xml_t cfg, xml, settings, param;
-	switch_status_t status = SWITCH_STATUS_SUCCESS;
-
-	memset(&globals, 0, sizeof(globals));
-
-	globals.pool = pool;
+ 	memset(&globals, 0, sizeof(globals));
+ 	globals.pool = pool;
 	switch_mutex_init(&globals.mutex, SWITCH_MUTEX_NESTED, globals.pool);
 
-	if ((xml = switch_xml_open_cfg(cf, &cfg, NULL))) {
+    if (switch_xml_config_parse_module_settings("statsd.conf", reload, instructions) != SWITCH_STATUS_SUCCESS) {
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "Could not open statsd.conf\n");
 
-		if ((settings = switch_xml_child(cfg, "settings"))) {
-			for (param = switch_xml_child(settings, "param"); param; param = param->next) {
-				char *var = (char *) switch_xml_attr_soft(param, "name");
-				char *val = (char *) switch_xml_attr_soft(param, "value");
-				if (!strcasecmp(var, "namespace")) {
-					globals.namespace = val;
-				} else if (!strcasecmp(var, "host")) {
-					globals.host = val;
-				} else if (!strcasecmp(var, "port")) {
-					globals.port = atoi(val);
-				}
-			}
-		}
-		switch_xml_free(xml);
-	}
-
-	if (zstr(globals.host)) {
-		globals.host = switch_core_strdup(pool, "127.0.0.1");
-	}
-
-	if (!globals.port) {
+		globals.host = "127.0.0.1";
 		globals.port = 8125;
-	}
+		return SWITCH_STATUS_FALSE;
+    }  
 
-	return status;
+    return SWITCH_STATUS_SUCCESS;
 }
 
 static int sql_count_callback(void *pArg, int argc, char **argv, char **columnNames)
@@ -138,7 +129,7 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_statsd_runtime)
 		}
 
 		switch_mutex_unlock(globals.mutex);
-		switch_sleep(1000*1000); // 1s
+		switch_sleep(SLEEP_INTERVAL); 
 	}
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Runtime thread is done\n");
 	return SWITCH_STATUS_TERM;
@@ -146,25 +137,27 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_statsd_runtime)
 
 SWITCH_MODULE_LOAD_FUNCTION(mod_statsd_load)
 {
-	switch_status_t status = SWITCH_STATUS_SUCCESS;
-	switch_management_interface_t *management_interface;
-
-	load_config(pool);
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "mod_statsd Initialising... \n");
+  
+	// switch_management_interface_t *management_interface;
 
 	*module_interface = switch_loadable_module_create_module_interface(pool, modname);
-	management_interface = switch_loadable_module_create_interface(*module_interface, SWITCH_MANAGEMENT_INTERFACE);
-	management_interface->relative_oid = "2000";
+	// management_interface = switch_loadable_module_create_interface(*module_interface, SWITCH_MANAGEMENT_INTERFACE);
+	// management_interface->relative_oid = "2000";
 
-	if (zstr(globals.namespace)) {
+	load_config(pool, SWITCH_FALSE);
+
+	if (zstr(globals._namespace)) {
 		globals.link = statsd_init(globals.host, globals.port);
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Sending stats to %s:%d\n", globals.host, globals.port);
 	} else {
-		globals.link = statsd_init_with_namespace(globals.host, globals.port, globals.namespace);
+		globals.link = statsd_init_with_namespace(globals.host, globals.port, globals._namespace);
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,
-				"Sending stats to %s:%d with namespace %s\n", globals.host, globals.port, globals.namespace);
+				"Sending stats to %s:%d with namespace %s\n", globals.host, globals.port, globals._namespace);
 	}
 
-	return status;
+    return SWITCH_STATUS_SUCCESS;
+
 }
 
 
@@ -176,6 +169,8 @@ SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_statsd_shutdown)
 	switch_mutex_unlock(globals.mutex);
 
 	switch_mutex_destroy(globals.mutex);
+
+	switch_xml_config_cleanup(instructions);
 
 	return SWITCH_STATUS_SUCCESS;
 }

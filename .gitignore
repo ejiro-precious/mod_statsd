@@ -5,4 +5,3 @@
 *.la
 *.lo
 Makefile.in
-Makefile

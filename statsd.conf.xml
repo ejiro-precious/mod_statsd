@@ -1,0 +1,7 @@
+<configuration name="statsd.conf" description="StatsD Configuration">
+	<settings>
+		<param name="host" value="127.0.0.1"/>
+		<param name="port" value="8125"/>
+		<param name="namespace" value="something"/>
+	</settings>
+ </configuration>
