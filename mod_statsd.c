@@ -25,6 +25,7 @@
  *
  * Contributor(s):
  * Joao Mesquita <jmesquita@sangoma.com>
+ * Kinshuk Bairagi <me@kinshuk.in>
  *
  * mod_statsd.c -- Send metrics to statsd server
  *
@@ -41,6 +42,12 @@ static struct {
 	char *_namespace;
 	int shutdown;
 } globals;
+
+typedef struct {
+	char *chan_var_name;
+	char *default_value;
+	switch_bool_t quote;
+} cdr_field_t;
 
 #define SLEEP_INTERVAL 5*1000*1000 //1s
 
@@ -84,6 +91,30 @@ static int sql_count_callback(void *pArg, int argc, char **argv, char **columnNa
 	*count = atoi(argv[0]);
 	return 0;
 }
+
+
+
+static switch_status_t statsd_cdr_reporting(switch_core_session_t *session)
+{
+	return SWITCH_STATUS_SUCCESS;
+}
+
+switch_state_handler_table_t statsd_state_handlers = {
+	/*.on_init */ NULL,
+	/*.on_routing */ NULL,
+	/*.on_execute */ NULL,
+	/*.on_hangup */ NULL,
+	/*.on_exchange_media */ NULL,
+	/*.on_soft_execute */ NULL,
+	/*.on_consume_media */ NULL,
+	/*.on_hibernate */ NULL,
+	/*.on_reset */ NULL,
+	/*.on_park */ NULL,
+	/*.on_reporting */ statsd_cdr_reporting,
+	/*.on_destroy */ NULL
+};
+
+
 
 /**
  * Polls for all metrics
@@ -139,11 +170,13 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_statsd_load)
 {
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "mod_statsd Initialising... \n");
   
-	// switch_management_interface_t *management_interface;
+	switch_management_interface_t *management_interface;
+
+	switch_core_add_state_handler(&statsd_state_handlers);
 
 	*module_interface = switch_loadable_module_create_module_interface(pool, modname);
-	// management_interface = switch_loadable_module_create_interface(*module_interface, SWITCH_MANAGEMENT_INTERFACE);
-	// management_interface->relative_oid = "2000";
+	management_interface = switch_loadable_module_create_interface(*module_interface, SWITCH_MANAGEMENT_INTERFACE);
+	management_interface->relative_oid = "2000";
 
 	load_config(pool, SWITCH_FALSE);
 
@@ -155,6 +188,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_statsd_load)
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,
 				"Sending stats to %s:%d with namespace %s\n", globals.host, globals.port, globals._namespace);
 	}
+
 
     return SWITCH_STATUS_SUCCESS;
 
@@ -171,6 +205,8 @@ SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_statsd_shutdown)
 	switch_mutex_destroy(globals.mutex);
 
 	switch_xml_config_cleanup(instructions);
+
+	switch_core_remove_state_handler(&statsd_state_handlers);
 
 	return SWITCH_STATUS_SUCCESS;
 }
