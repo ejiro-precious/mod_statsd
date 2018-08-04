@@ -3,19 +3,19 @@
 
 #define MAX_MSG_LEN 1024
 
-statsd_link *statsd_init_with_namespace(const char *host, int port, const char *ns_)
+statsd_link *statsd_init_with_namespace(std::string host, int port, const char *ns_)
 {
     size_t len;
     statsd_link *temp = NULL;
 
-    if (!host || !port || !ns_)
+    if (host.size() == 0 || !port || !ns_)
         return NULL;
 
     len = strlen(ns_);
 
     temp = statsd_init(host, port);
 
-    if ( (temp->ns = malloc(len + 2)) == NULL ) {
+    if ( (temp->ns = (char*) malloc(len + 2)) == NULL ) {
         perror("malloc");
         return NULL;
     }
@@ -26,17 +26,17 @@ statsd_link *statsd_init_with_namespace(const char *host, int port, const char *
     return temp;
 }
 
-statsd_link *statsd_init(const char *host, int port)
+statsd_link *statsd_init(std::string host, int port)
 {
     statsd_link *temp;
     struct addrinfo *result = NULL;
     struct addrinfo hints;
     int error;
 
-    if (!host || !port)
+    if (host.size() == 0 || !port)
         return NULL;
 
-    temp = calloc(1, sizeof(statsd_link));
+    temp = (statsd_link*) calloc(1, sizeof(statsd_link));
     if (!temp) {
         fprintf(stderr, "calloc() failed");
         goto err;
@@ -55,7 +55,7 @@ statsd_link *statsd_init(const char *host, int port)
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
-    if ( (error = getaddrinfo(host, NULL, &hints, &result)) ) {
+    if ( (error = getaddrinfo(host.c_str(), NULL, &hints, &result)) ) {
         fprintf(stderr, "%s\n", gai_strerror(error));
         goto err;
     }
@@ -95,13 +95,14 @@ void statsd_finalize(statsd_link *link)
 }
 
 /* will change the original string */
-static void cleanup(char *stat)
+static void cleanup(std::string stat)
 {
-    char *p;
-    for (p = stat; *p; p++) {
-        if (*p == ':' || *p == '|' || *p == '@') {
-            *p = '_';
+    for(unsigned int i = 0; i < stat.size(); i++) {
+        char x = stat.at(i);
+        if (x == ':' || x == '|' || x == '@') {
+            stat.at(i) = '_';
         }
+
     }
 }
 
@@ -129,7 +130,7 @@ int statsd_send(statsd_link *link, const char *message)
     return 0;
 }
 
-static int send_stat(statsd_link *link, char *stat, size_t value, const char *type, float sample_rate)
+static int send_stat(statsd_link *link, std::string stat, size_t value, const char *type, float sample_rate)
 {
     char message[MAX_MSG_LEN];
     if (!should_send(sample_rate)) {
@@ -141,40 +142,40 @@ static int send_stat(statsd_link *link, char *stat, size_t value, const char *ty
     return statsd_send(link, message);
 }
 
-void statsd_prepare(statsd_link *link, char *stat, size_t value, const char *type, float sample_rate, char *message, size_t buflen, int lf)
+void statsd_prepare(statsd_link *link, std::string stat, size_t value, const char *type, float sample_rate, char *message, size_t buflen, int lf)
 {
     if (!link) return;
 
     cleanup(stat);
     if (sample_rate == 1.0) {
-        snprintf(message, buflen, "%s%s:%zd|%s%s", link->ns ? link->ns : "", stat, value, type, lf ? "\n" : "");
+        snprintf(message, buflen, "%s%s:%zd|%s%s", link->ns ? link->ns : "", stat.c_str(), value, type, lf ? "\n" : "");
     } else {
-        snprintf(message, buflen, "%s%s:%zd|%s|@%.2f%s", link->ns ? link->ns : "", stat, value, type, sample_rate, lf ? "\n" : "");
+        snprintf(message, buflen, "%s%s:%zd|%s|@%.2f%s", link->ns ? link->ns : "", stat.c_str(), value, type, sample_rate, lf ? "\n" : "");
     }
 }
 
 /* public interface */
-int statsd_count(statsd_link *link, char *stat, size_t value, float sample_rate)
+int statsd_count(statsd_link *link, std::string stat, size_t value, float sample_rate)
 {
     return send_stat(link, stat, value, "c", sample_rate);
 }
 
-int statsd_dec(statsd_link *link, char *stat, float sample_rate)
+int statsd_dec(statsd_link *link, std::string stat, float sample_rate)
 {
     return statsd_count(link, stat, -1, sample_rate);
 }
 
-int statsd_inc(statsd_link *link, char *stat, float sample_rate)
+int statsd_inc(statsd_link *link, std::string stat, float sample_rate)
 {
     return statsd_count(link, stat, 1, sample_rate);
 }
 
-int statsd_gauge(statsd_link *link, char *stat, size_t value)
+int statsd_gauge(statsd_link *link, std::string stat, size_t value)
 {
     return send_stat(link, stat, value, "g", 1.0);
 }
 
-int statsd_timing(statsd_link *link, char *stat, size_t ms)
+int statsd_timing(statsd_link *link, std::string stat, size_t ms)
 {
     return send_stat(link, stat, ms, "ms", 1.0);
 }

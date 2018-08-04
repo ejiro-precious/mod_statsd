@@ -3,18 +3,18 @@ MODOBJ = mod_statsd.o statsd-client.o
 MODCFLAGS = -Wall -Werror 
 MODLDFLAGS = -lz -lpthread -lrt 
 
-C = gcc
-CFLAGS = -fPIC -g -ggdb -I/usr/include  `pkg-config --cflags freeswitch` $(MODCFLAGS)
+CXX = g++
+CFLAGS = -fPIC -g -ggdb -I/usr/include  `pkg-config --cflags freeswitch` $(MODCFLAGS) -std=c++0x
 LDFLAGS = `pkg-config --libs freeswitch` $(MODLDFLAGS) 
 
 .PHONY: all
 all: $(MODNAME)
 
 $(MODNAME): $(MODOBJ)
-	@$(C) -shared -o $@ $(MODOBJ) $(LDFLAGS)
+	@$(CXX) -shared -o $@ $(MODOBJ) $(LDFLAGS)
 
-.c.o: $<
-	@$(C) $(CFLAGS) -o $@ -c $<
+.cpp.o: $<
+	@$(CXX) $(CFLAGS) -o $@ -c $<
 
 .PHONY: clean
 clean:
