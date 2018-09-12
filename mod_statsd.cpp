@@ -105,8 +105,8 @@ static switch_status_t statsd_cdr_reporting(switch_core_session_t *session)
 		const char *uuid = NULL;
 		std::string event_name;
 		const char *tmp;
-		// int is_b;
-		// is_b = channel && switch_channel_get_originator_caller_profile(channel);
+		
+		int is_b = channel && switch_channel_get_originator_caller_profile(channel);
 
 		if (!(uuid = switch_channel_get_variable(channel, "uuid"))) {
 			uuid = switch_core_strdup(pool, switch_core_session_get_uuid(session));
@@ -119,18 +119,34 @@ static switch_status_t statsd_cdr_reporting(switch_core_session_t *session)
 		// //sip_hangup_disposition
 		// //quality_percentage
 
+        if (is_b){
+			statsd_count(globals.link, "call_finish_b" , 1, 1.0);
+
+			tmp = switch_channel_get_variable(channel, "duration");
+			statsd_gauge(globals.link, "call_duration_b" , atoi(tmp));
+
+			tmp = switch_channel_get_variable(channel, "answersec");
+			statsd_gauge(globals.link, "call_answer_seconds_b" , atoi(tmp));
+
+			tmp = switch_channel_get_variable(channel, "hold_accum_seconds");
+			statsd_gauge(globals.link, "call_hold_seconds_b" , atoi(tmp));
+
+        } else {
+			statsd_count(globals.link, "call_finish" , 1, 1.0);
+
+			tmp = switch_channel_get_variable(channel, "duration");
+			statsd_gauge(globals.link, "call_duration" , atoi(tmp));
+
+			tmp = switch_channel_get_variable(channel, "answersec");
+			statsd_gauge(globals.link, "call_answer_seconds" , atoi(tmp));
+
+			tmp = switch_channel_get_variable(channel, "hold_accum_seconds");
+			statsd_gauge(globals.link, "call_hold_seconds" , atoi(tmp));
+        }
+
 		tmp = switch_channel_get_variable(channel, "hangup_cause");
 		event_name = "hangup_cause."  + (std::string) tmp;
 		statsd_count(globals.link, event_name , 1, 1.0);
-
-		tmp = switch_channel_get_variable(channel, "duration");
-		statsd_gauge(globals.link, "call_duration" , atoi(tmp));
-
-		tmp = switch_channel_get_variable(channel, "answersec");
-		statsd_gauge(globals.link, "call_answer_seconds" , atoi(tmp));
-
-		tmp = switch_channel_get_variable(channel, "hold_accum_seconds");
-		statsd_gauge(globals.link, "call_hold_seconds" , atoi(tmp));
 
 		return SWITCH_STATUS_SUCCESS;
 
@@ -140,8 +156,30 @@ static switch_status_t statsd_cdr_reporting(switch_core_session_t *session)
     }
 }
 
+
+static switch_status_t statsd_call_reporting(switch_core_session_t *session)
+{
+	try {
+
+		switch_channel_t *channel = switch_core_session_get_channel(session);
+		int is_b = channel && switch_channel_get_originator_caller_profile(channel);
+
+		if (is_b){
+			statsd_count(globals.link, "call_init_b" , 1, 1.0);
+        } else {
+			statsd_count(globals.link, "call_init" , 1, 1.0);
+        }
+		return SWITCH_STATUS_SUCCESS;
+
+	} catch(...) { 
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Error running statsd_cdr_reporting\n");
+        return SWITCH_STATUS_SUCCESS;
+    }
+}
+
+
 switch_state_handler_table_t statsd_state_handlers = {
-	/*.on_init */ NULL,
+	/*.on_init */ statsd_call_reporting,
 	/*.on_routing */ NULL,
 	/*.on_execute */ NULL,
 	/*.on_hangup */ NULL,
@@ -216,13 +254,13 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_statsd_load)
 
 	    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "mod_statsd Initialising... \n");
 	  
-		switch_management_interface_t *management_interface;
+		//switch_management_interface_t *management_interface;
 
 		switch_core_add_state_handler(&statsd_state_handlers);
 
 		*module_interface = switch_loadable_module_create_module_interface(pool, modname);
-		management_interface = (switch_management_interface_t *) switch_loadable_module_create_interface(*module_interface, SWITCH_MANAGEMENT_INTERFACE);
-		management_interface->relative_oid = "2000";
+		//management_interface = (switch_management_interface_t *) switch_loadable_module_create_interface(*module_interface, SWITCH_MANAGEMENT_INTERFACE);
+		//management_interface->relative_oid = "2000";
 
 		load_config(pool, SWITCH_FALSE);
 
