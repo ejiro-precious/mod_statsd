@@ -148,6 +148,22 @@ static switch_status_t statsd_cdr_reporting(switch_core_session_t *session)
 		event_name = "hangup_cause."  + (std::string) tmp;
 		statsd_count(globals.link, event_name , 1, 1.0);
 
+		if (strcmp(tmp, "NORMAL_UNSPECIFIED") == 0) {
+		    // strings are equal
+		    tmp = switch_channel_get_variable(channel, "sip_hangup_disposition");
+			event_name = "hangup_info.NORMAL_UNSPECIFIED.disposition." + (std::string) tmp;
+			statsd_count(globals.link, event_name , 1, 1.0);
+
+			tmp = switch_channel_get_variable(channel, "sip_term_status");
+	        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "NORMAL_UNSPECIFIED %s sip_term_status %s\n",uuid, tmp);
+
+	        if(tmp != NULL){
+				event_name = "hangup_info.NORMAL_UNSPECIFIED.term_status." + (std::string) tmp;
+				statsd_count(globals.link, event_name , 1, 1.0);
+			}
+		}
+
+		
 		return SWITCH_STATUS_SUCCESS;
 
 	} catch(...) { 
@@ -172,7 +188,7 @@ static switch_status_t statsd_call_reporting(switch_core_session_t *session)
 		return SWITCH_STATUS_SUCCESS;
 
 	} catch(...) { 
-        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Error running statsd_cdr_reporting\n");
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Error running statsd_call_reporting\n");
         return SWITCH_STATUS_SUCCESS;
     }
 }
