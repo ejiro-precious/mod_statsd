@@ -26,3 +26,7 @@ install: $(MODNAME)
 	install $(MODNAME) $(DESTDIR)/usr/lib/freeswitch/mod
 	install -d $(DESTDIR)/etc/freeswitch/autoload_configs
 	install statsd.conf.xml $(DESTDIR)/etc/freeswitch/autoload_configs/
+
+.PHONY: release
+release: $(MODNAME)
+	distribution/make-deb.sh

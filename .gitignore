@@ -6,3 +6,5 @@
 *.lo
 Makefile.in
 *.deb
+.DS_Store
+.vscode
