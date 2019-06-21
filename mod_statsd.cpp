@@ -33,6 +33,7 @@
 #include <switch.h>
 #include <iostream>
 #include <string>
+#include <algorithm>
 #include "statsd-client.h"
 
 static struct {
@@ -51,7 +52,30 @@ typedef struct {
 	switch_bool_t quote;
 } cdr_field_t;
 
+
+// templated version of equals so it could work with both char and wchar_t
+template<typename charT>
+struct equals {
+    equals( const std::locale& loc ) : loc_(loc) {}
+    bool operator()(charT ch1, charT ch2) {
+        return std::toupper(ch1, loc_) == std::toupper(ch2, loc_);
+    }
+private:
+    const std::locale& loc_;
+};
+
+// find substring (case insensitive)
+template<typename T>
+int ci_find_substr( const T& str1, const T& str2, const std::locale& loc = std::locale() )
+{
+    typename T::const_iterator it = std::search( str1.begin(), str1.end(), 
+        str2.begin(), str2.end(), equals<typename T::value_type>(loc) );
+    if ( it != str1.end() ) return it - str1.begin();
+    else return -1; // not found
+}
+
 #define SLEEP_INTERVAL 10*1000*1000 //1s
+
 
 SWITCH_MODULE_LOAD_FUNCTION(mod_statsd_load);
 SWITCH_MODULE_RUNTIME_FUNCTION(mod_statsd_runtime);
@@ -94,7 +118,7 @@ static int sql_count_callback(void *pArg, int argc, char **argv, char **columnNa
 	return 0;
 }
 
-
+static std::string broken_rtp = "broken";
 
 static switch_status_t statsd_cdr_reporting(switch_core_session_t *session)
 {
@@ -148,21 +172,14 @@ static switch_status_t statsd_cdr_reporting(switch_core_session_t *session)
 		event_name = "hangup_cause."  + (std::string) tmp;
 		statsd_count(globals.link, event_name , 1, 1.0);
 
-		if (strcmp(tmp, "NORMAL_UNSPECIFIED") == 0) {
-		    // strings are equal
-		    tmp = switch_channel_get_variable(channel, "sip_hangup_disposition");
-			event_name = "hangup_info.NORMAL_UNSPECIFIED.disposition." + (std::string) tmp;
-			statsd_count(globals.link, event_name , 1, 1.0);
-
-			tmp = switch_channel_get_variable(channel, "sip_term_status");
-	        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "NORMAL_UNSPECIFIED %s sip_term_status %s\n",uuid, tmp);
-
-	        if(tmp != NULL){
-				event_name = "hangup_info.NORMAL_UNSPECIFIED.term_status." + (std::string) tmp;
-				statsd_count(globals.link, event_name , 1, 1.0);
+		tmp = switch_channel_get_variable(channel, "sip_reason");
+		if(tmp != NULL){
+        	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "HANGUP %s sip_reason %s\n",uuid, tmp);
+			if(ci_find_substr((std::string) tmp, broken_rtp) != -1){
+		        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "HANGUP %s due to RTP Issue\n",uuid);
+				statsd_count(globals.link, "hangup_info.RTP_BROKEN" , 1, 1.0);
 			}
 		}
-
 		
 		return SWITCH_STATUS_SUCCESS;
 
