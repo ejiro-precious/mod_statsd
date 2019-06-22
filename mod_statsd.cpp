@@ -24,7 +24,6 @@
  * Seventh Signal Ltd. & Co. KG, All Rights Reserverd.
  *
  * Contributor(s):
- * Joao Mesquita <jmesquita@sangoma.com>
  * Kinshuk Bairagi <me@kinshuk.in>
  *
  * mod_statsd.c -- Send metrics to statsd server
@@ -51,7 +50,6 @@ typedef struct {
 	char *default_value;
 	switch_bool_t quote;
 } cdr_field_t;
-
 
 // templated version of equals so it could work with both char and wchar_t
 template<typename charT>
@@ -105,8 +103,7 @@ static switch_status_t load_config(switch_memory_pool_t *pool, switch_bool_t rel
 
 		const char* _host = "127.0.0.1";
 		globals.host = (char*)malloc(strlen(_host)+1);
-		strcpy( (char*)_host,globals.host);
-
+		strcpy(globals.host,_host);
 		globals.port = 8125;
 		return SWITCH_STATUS_FALSE;
     }  
@@ -243,7 +240,7 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_statsd_runtime)
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Starting Poll for metrics\n");
 
 	while(globals.shutdown == 0) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Running Poll for metrics\n");
+		//switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Running Poll for metrics\n");
 
 		switch_mutex_lock(globals.mutex);
 

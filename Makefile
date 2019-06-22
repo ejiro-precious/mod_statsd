@@ -3,8 +3,8 @@ MODOBJ = mod_statsd.o statsd-client.o
 MODCFLAGS = -Wall -Werror 
 MODLDFLAGS = -lz -lpthread -lrt 
 
-CXX = /usr/bin/g++
-CFLAGS = -fPIC -g -ggdb -I/usr/include  `pkg-config --cflags freeswitch` $(MODCFLAGS) -std=c++0x
+CXX = g++
+CFLAGS = -fPIC -g -ggdb -I/usr/include  `pkg-config --cflags freeswitch` $(MODCFLAGS) -std=c++1y
 LDFLAGS = `pkg-config --libs freeswitch` $(MODLDFLAGS) 
 
 .PHONY: all
