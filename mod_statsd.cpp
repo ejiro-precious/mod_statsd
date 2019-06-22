@@ -34,15 +34,15 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
-#include "statsd-client.h"
+#include "statsd-client.hpp"
 
 static struct {
 	switch_memory_pool_t *pool;
 	switch_mutex_t *mutex;
 	int port;
 	statsd_link* link;
-	std::string host;
-	char *_namespace;
+	char* host;
+	char* _namespace;
 	int shutdown;
 } globals;
 
@@ -88,7 +88,7 @@ static switch_xml_config_item_t instructions[] = {
                         "127.0.0.1", NULL, NULL, "StatsD hostname"),
     SWITCH_CONFIG_ITEM("port", SWITCH_CONFIG_INT, CONFIG_REQUIRED, &globals.port,
                         (void *) 8125, NULL, NULL, NULL),
-    SWITCH_CONFIG_ITEM("namespace", SWITCH_CONFIG_STRING, CONFIG_RELOADABLE, &globals._namespace,
+    SWITCH_CONFIG_ITEM("namespace", SWITCH_CONFIG_STRING, CONFIG_REQUIRED, &globals._namespace,
                         NULL, NULL, NULL, "StatsD namespace"),
     SWITCH_CONFIG_ITEM_END()
 };
@@ -103,7 +103,10 @@ static switch_status_t load_config(switch_memory_pool_t *pool, switch_bool_t rel
     if (switch_xml_config_parse_module_settings("statsd.conf", reload, instructions) != SWITCH_STATUS_SUCCESS) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "Could not open statsd.conf\n");
 
-		globals.host = "127.0.0.1";
+		const char* _host = "127.0.0.1";
+		globals.host = (char*)malloc(strlen(_host)+1);
+		strcpy( (char*)_host,globals.host);
+
 		globals.port = 8125;
 		return SWITCH_STATUS_FALSE;
     }  
@@ -240,7 +243,7 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_statsd_runtime)
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Starting Poll for metrics\n");
 
 	while(globals.shutdown == 0) {
-		//switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Running Poll for metrics\n");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Running Poll for metrics\n");
 
 		switch_mutex_lock(globals.mutex);
 
@@ -299,11 +302,14 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_statsd_load)
 
 		if (zstr(globals._namespace)) {
 			globals.link = statsd_init(globals.host, globals.port);
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Sending stats to %s:%d\n", globals.host.c_str(), globals.port);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Sending stats to %s:%d\n", globals.host, globals.port);
 		} else {
-			globals.link = statsd_init_with_namespace(globals.host, globals.port, globals._namespace);
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,
-					"Sending stats to %s:%d with namespace %s\n", globals.host.c_str(), globals.port, globals._namespace);
+					"Setting up stats to %s:%d with namespace %s\n", globals.host, globals.port, globals._namespace);
+			auto socket = statsd_init_with_namespace(globals.host, globals.port, globals._namespace);
+			globals.link  = socket;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,
+					"Sending stats to %s:%d with namespace %s\n", globals.host, globals.port, globals._namespace);
 		}
 
 	    return SWITCH_STATUS_SUCCESS;

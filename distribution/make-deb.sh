@@ -3,6 +3,11 @@ set -ex
 
 BUILD_ROOT=$(mktemp -d)
 VERSION=$(date +%s)
+
+make clean
+make 
+make install
+
 cp -r distribution/debian/* $BUILD_ROOT/
 
 mkdir -p $BUILD_ROOT/usr/local/lib/

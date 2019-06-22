@@ -4,6 +4,12 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <string>
+#include <iostream>
+#include <algorithm>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct _statsd_link  {
 	struct sockaddr_in server;
@@ -13,9 +19,8 @@ struct _statsd_link  {
 
 typedef struct _statsd_link statsd_link;
 
-
-statsd_link *statsd_init(std::string host, int port);
-statsd_link *statsd_init_with_namespace(std::string host, int port, const char *ns);
+statsd_link* statsd_init(const char* host, int port);
+statsd_link* statsd_init_with_namespace(const char* host, int port, const char *ns);
 void statsd_finalize(statsd_link *link);
 
 /*
@@ -33,4 +38,9 @@ int statsd_dec(statsd_link *link, std::string stat, float sample_rate);
 int statsd_count(statsd_link *link, std::string stat, size_t count, float sample_rate);
 int statsd_gauge(statsd_link *link, std::string stat, size_t value);
 int statsd_timing(statsd_link *link, std::string stat, size_t ms);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

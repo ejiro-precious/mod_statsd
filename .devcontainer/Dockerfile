@@ -5,10 +5,8 @@
 
 FROM debian:9
 
-
-
 # Install git, process tools
-RUN apt-get update && apt-get -y install git procps wget 
+RUN apt-get update && apt-get -y install git procps wget nano
 
 # Install C++ tools
 RUN apt-get -y install build-essential cmake cppcheck valgrind pkg-config lsb-release
@@ -17,7 +15,7 @@ RUN apt-get -y install build-essential cmake cppcheck valgrind pkg-config lsb-re
 RUN echo "deb [trusted=yes] http://files.freeswitch.org/repo/deb/freeswitch-1.8/ stretch main" > /etc/apt/sources.list.d/freeswitch.list
 RUN wget -O - https://files.freeswitch.org/repo/deb/freeswitch-1.8/fsstretch-archive-keyring.asc | apt-key add -
 
-RUN apt-get update && apt-get -y install libfreeswitch-dev librdkafka-dev libz-dev libssl-dev
+RUN apt-get update && apt-get -y install libfreeswitch-dev libz-dev libssl-dev
 
 # Clean up
 RUN apt-get autoremove -y \

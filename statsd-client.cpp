@@ -1,22 +1,25 @@
 #include <switch.h>
-#include "statsd-client.h"
+#include <iostream>
+#include "statsd-client.hpp"
 
 #define MAX_MSG_LEN 1024
 
-statsd_link *statsd_init_with_namespace(std::string host, int port, const char *ns_)
+statsd_link* statsd_init_with_namespace(const char*  host, int port, const char* ns_)
 {
     size_t len;
     statsd_link *temp = NULL;
 
-    if (host.size() == 0 || !port || !ns_)
+    if (!host == 0 || !port || !ns_){
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "statsd_init_with_namespace() assert failed.\n");
         return NULL;
+    }
 
     len = strlen(ns_);
-
     temp = statsd_init(host, port);
 
     if ( (temp->ns = (char*) malloc(len + 2)) == NULL ) {
         perror("malloc");
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "malloc() failed\n");
         return NULL;
     }
     strcpy(temp->ns, ns_);
@@ -26,24 +29,28 @@ statsd_link *statsd_init_with_namespace(std::string host, int port, const char *
     return temp;
 }
 
-statsd_link *statsd_init(std::string host, int port)
+statsd_link* statsd_init(const char* host, int port)
 {
     statsd_link *temp;
     struct addrinfo *result = NULL;
     struct addrinfo hints;
     int error;
 
-    if (host.size() == 0 || !port)
+    if (!host || !port){
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "statsd_init() assert failed.\n");
         return NULL;
+    }
 
     temp = (statsd_link*) calloc(1, sizeof(statsd_link));
     if (!temp) {
         fprintf(stderr, "calloc() failed");
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "calloc() failed\n");
         goto err;
     }
 
     if ((temp->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
         perror("socket");
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "socket() errored\n");
         goto err;
     }
 
@@ -55,18 +62,21 @@ statsd_link *statsd_init(std::string host, int port)
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
-    if ( (error = getaddrinfo(host.c_str(), NULL, &hints, &result)) ) {
+    if ( (error = getaddrinfo(host, NULL, &hints, &result)) ) {
         fprintf(stderr, "%s\n", gai_strerror(error));
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "getaddrinfo() failed %s\n", gai_strerror(error));
         goto err;
     }
     memcpy(&(temp->server.sin_addr), &((struct sockaddr_in*)result->ai_addr)->sin_addr, sizeof(struct in_addr));
     freeaddrinfo(result);
 
     srandom(time(NULL));
-
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "statsd_init() success.\n");
     return temp;
 
 err:
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "statsd_init() errored.\n");
+
     if (temp) {
         free(temp);
     }
@@ -119,12 +129,15 @@ static int should_send(float sample_rate)
 
 int statsd_send(statsd_link *link, const char *message)
 {
-    int slen;
-    if (!link) return -2;
-    slen = sizeof(link->server);
+    if (!link) {
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "statsd_send() failed as socket unavailable.\n");
+        return -2;
+    }
+    int slen = sizeof(link->server);
 
     if (sendto(link->sock, message, strlen(message), 0, (struct sockaddr *) &link->server, slen) == -1) {
         perror("sendto");
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "statsd_send sendto() errored.\n");
         return -1;
     }
     return 0;
