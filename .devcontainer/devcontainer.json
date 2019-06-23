@@ -16,6 +16,7 @@
 	//"postCreateCommand": "make",
 
 	"extensions": [
-		"ms-vscode.cpptools"
+		"ms-vscode.cpptools",
+		"austin.code-gnu-global",
 	]
 }
