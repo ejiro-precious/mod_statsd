@@ -9,7 +9,7 @@ statsd_link* statsd_init_with_namespace(const char*  host, int port, const char*
     size_t len;
     statsd_link *temp = NULL;
 
-    if (!host == 0 || !port || !ns_){
+    if (host == NULL || !port || ns_ == NULL){
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "statsd_init_with_namespace() assert failed.\n");
         return NULL;
     }
@@ -36,7 +36,7 @@ statsd_link* statsd_init(const char* host, int port)
     struct addrinfo hints;
     int error;
 
-    if (!host || !port){
+    if (host == NULL || !port){
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "statsd_init() assert failed.\n");
         return NULL;
     }
