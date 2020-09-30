@@ -8,3 +8,4 @@ Makefile.in
 *.deb
 .DS_Store
 .vscode
+dot.vscode

@@ -248,14 +248,16 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_statsd_runtime)
 		statsd_gauge(globals.link, "sessions_count", switch_core_session_count());
 		switch_core_session_ctl(SCSC_SESSIONS_PEAK, &int_val);
 		statsd_gauge(globals.link, "sessions_count_peak", int_val);
+		switch_core_session_ctl(SCSC_SESSIONS_PEAK_FIVEMIN, &int_val);
+		statsd_gauge(globals.link, "sessions_count_peak_5min", int_val);
+
 		switch_core_session_ctl(SCSC_LAST_SPS, &int_val);
 		statsd_gauge(globals.link, "sessions_per_second", int_val);
+		switch_core_session_ctl(SCSC_SPS_PEAK_FIVEMIN, &int_val);
+		statsd_gauge(globals.link, "sessions_per_second_peak_5min", int_val);
 		switch_core_session_ctl(SCSC_SPS_PEAK, &int_val);
 		statsd_gauge(globals.link, "sessions_per_second_peak", int_val);
-		switch_core_session_ctl(SCSC_SESSIONS_PEAK_FIVEMIN, &int_val);
-		statsd_gauge(globals.link, "sessions_per_second_5min", int_val);
-
-
+		
 		if (switch_core_db_handle(&dbh) != SWITCH_STATUS_SUCCESS) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No database to output calls or channels.\n");
 		} else {
